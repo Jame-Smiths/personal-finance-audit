@@ -356,12 +356,14 @@
     err.hidden = true;
     try {
       const cfg = window.APP_CONFIG || {};
+      const headers = {
+        "Content-Type": "application/json",
+        "x-form-token": cfg.FORM_TOKEN || "",
+      };
+      if (cfg.OPENAPI_KEY) headers["Authorization"] = "Bearer " + cfg.OPENAPI_KEY;
       const res = await fetch(cfg.API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-form-token": cfg.FORM_TOKEN || "",
-        },
+        headers,
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
