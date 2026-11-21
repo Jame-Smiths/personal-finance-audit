@@ -2,10 +2,10 @@
 (function () {
   "use strict";
 
-  const DRAFT_KEY = "audit-form-draft-v1";
+  const DRAFT_KEY = "audit-form-draft-v2";
   const TOTAL_STEPS = 5;
   let currentStep = 1;
-  let assets = []; // 资产动态列表 [{id,name,type,value,cost,hold,note}]
+  let assets = []; // 资产动态列表 [{id,idx,name,type,value,cost,hold,note}]
   let assetSeq = 0;
 
   const $ = (sel) => document.querySelector(sel);
@@ -30,27 +30,24 @@
   function loadDraft() {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
+      if (!raw) return 1;
       const data = JSON.parse(raw);
-      // 恢复普通输入
       if (data.fields) {
         Object.entries(data.fields).forEach(([name, val]) => {
           const el = document.querySelector(`[name="${name}"]`);
           if (el && el.type !== "checkbox") el.value = val;
         });
       }
-      // 恢复胶囊选项
       if (data.chips) {
         Object.entries(data.chips).forEach(([name, val]) => setChip(name, val));
       }
-      // 恢复资产
       if (Array.isArray(data.assets) && data.assets.length) {
         assets = data.assets;
         assetSeq = assets.length;
         renderAssets();
       }
       refreshConditionals();
-      updateSummary();
+      refreshFinalCheck();
       return data.step || 1;
     } catch (e) {
       return 1;
@@ -82,11 +79,21 @@
     return out;
   }
 
+  function isMultiGroup(group) {
+    return group.classList.contains("chips-multi");
+  }
+
   function collectChips() {
     const out = {};
     $$(".chips").forEach((group) => {
-      const on = group.querySelector(".chip.on");
-      if (on) out[group.dataset.name] = on.dataset.value;
+      const on = Array.from(group.querySelectorAll(".chip.on")).map(
+        (c) => c.dataset.value
+      );
+      if (isMultiGroup(group)) {
+        if (on.length) out[group.dataset.name] = on;
+      } else if (on.length) {
+        out[group.dataset.name] = on[0];
+      }
     });
     return out;
   }
@@ -94,8 +101,9 @@
   function setChip(name, value) {
     const group = document.querySelector(`.chips[data-name="${name}"]`);
     if (!group) return;
+    const values = Array.isArray(value) ? value : [value];
     group.querySelectorAll(".chip").forEach((c) => {
-      c.classList.toggle("on", c.dataset.value === value);
+      c.classList.toggle("on", values.includes(c.dataset.value));
     });
   }
 
@@ -116,33 +124,33 @@
     const named = collectNamedInputs();
     const chips = collectChips();
     const client = {
-      name: named.name || "",
       age: toNum(named.age),
-      marital: chips.marital || "",
-      childrenCount: toNum(named.childrenCount),
-      childrenAges: named.childrenAges || "",
-      hasInfant: chips.hasInfant || "",
-      supportElders: chips.supportElders || "",
+      eldersCount: toNum(chips.eldersCount),
+      onlyChild: chips.onlyChild || "",
       housing: chips.housing || "",
       rentCity: named.rentCity || "",
       rentMonthly: toNum(named.rentMonthly),
-      firstHomeLoan: chips.firstHomeLoan || "",
+      houseCount: toNum(named.houseCount),
+      houseNote: named.houseNote || "",
       salaryPreTax: toNum(named.salaryPreTax),
+      netMonthly: toNum(named.netMonthly),
       socialBase: toNum(named.socialBase),
       fundBase: toNum(named.fundBase),
+      monthlyBonus: toNum(named.monthlyBonus),
+      monthlyBonusRule: named.monthlyBonusRule || "",
       yearEndBonus: toNum(named.yearEndBonus),
+      yearBonusRule: named.yearBonusRule || "",
+      bonusTaxMethod: chips.bonusTaxMethod || "",
       commissionRule: named.commissionRule || "",
       commissionPayer: chips.commissionPayer || "",
       commissionCycle: chips.commissionCycle || "",
       commissionMonthly: toNum(named.commissionMonthly),
-      otherIncome: named.otherIncome || "",
+      rentIncome: toNum(named.rentIncome),
       deductions: chips.deductions || "",
-      bonusTaxMethod: chips.bonusTaxMethod || "",
-      netMonthly: toNum(named.netMonthly),
+      otherIncome: named.otherIncome || "",
       expHousing: toNum(named.expHousing),
       expFood: toNum(named.expFood),
       expTransport: toNum(named.expTransport),
-      expEducation: toNum(named.expEducation),
       expSupport: toNum(named.expSupport),
       expInsurance: toNum(named.expInsurance),
       expOther: toNum(named.expOther),
@@ -150,6 +158,7 @@
       loanCar: toNum(named.loanCar),
       loanConsumer: toNum(named.loanConsumer),
       loanCreditCard: toNum(named.loanCreditCard),
+      firstHomeLoan: chips.firstHomeLoan || "",
       otherDebt: named.otherDebt || "",
       note: named.note || "",
     };
@@ -166,54 +175,17 @@
     return { client, assets: assetList };
   }
 
-  /* ---------- 汇总与三张表初稿 ---------- */
-  function computeSummary() {
-    const p = buildPayload();
-    const c = p.client;
-    const assetTotal = p.assets.reduce((s, a) => s + (a.value || 0), 0);
-    const debtTotal =
-      (c.loanMortgage || 0) + (c.loanCar || 0) + (c.loanConsumer || 0) + (c.loanCreditCard || 0);
-    const expTotal =
-      (c.expHousing || 0) + (c.expFood || 0) + (c.expTransport || 0) +
-      (c.expEducation || 0) + (c.expSupport || 0) + (c.expInsurance || 0) + (c.expOther || 0);
-    const incTotal = (c.netMonthly || 0) + (c.commissionMonthly || 0);
-    return {
-      name: c.name,
-      assetTotal,
-      debtTotal,
-      netWorth: assetTotal - debtTotal,
-      expTotal,
-      incTotal,
-      surplus: incTotal - expTotal,
-      assetCount: p.assets.length,
-    };
-  }
-
-  const fmt = (n) =>
-    (n === null || n === undefined || Number.isNaN(n) ? 0 : n).toLocaleString("zh-CN");
-
-  function renderSummary(targetSel) {
-    const s = computeSummary();
-    const el = $(targetSel);
-    if (!el) return;
-    el.innerHTML = `
-      <div class="sum-group">一、资产负债表（截至今天）</div>
-      <div class="sum-item"><span>资产合计（${s.assetCount} 项）</span><b>${fmt(s.assetTotal)} 元</b></div>
-      <div class="sum-item"><span>负债合计</span><b>${fmt(s.debtTotal)} 元</b></div>
-      <div class="sum-item"><span>净资产</span><b class="sum-total">${fmt(s.netWorth)} 元</b></div>
-      <div class="sum-group">二、收支结余表（平均每月）</div>
-      <div class="sum-item"><span>月收入（到手工资＋提成）</span><b>${fmt(s.incTotal)} 元</b></div>
-      <div class="sum-item"><span>月支出合计</span><b>${fmt(s.expTotal)} 元</b></div>
-      <div class="sum-item"><span>月结余</span><b class="sum-total">${fmt(s.surplus)} 元</b></div>
-      <div class="sum-group">三、现金流量表（月净现金流）</div>
-      <div class="sum-item"><span>每月净现金流入（约等于月结余）</span><b>${fmt(s.surplus)} 元</b></div>
-      <div class="sum-item"><span>提示</span><b style="font-weight:400;font-size:13px;color:#646a73">大额一次性收支请写在"补充说明"里</b></div>
-    `;
-  }
-
-  function updateSummary() {
-    renderSummary("#summaryCards");
-    renderSummary("#successSummary");
+  /* ---------- 第 5 步：填写情况检查 ---------- */
+  function refreshFinalCheck() {
+    const el = $("#finalAssetCount");
+    if (el) el.textContent = assets.filter((a) => a.name && a.name.trim()).length + " 项";
+    const inc = $("#finalIncomeCheck");
+    if (inc) {
+      const sal = $("#fSalary");
+      const hasSal = sal && Number(sal.value) > 0;
+      inc.textContent = hasSal ? "已填写 ✓" : "未填月薪（必填）";
+      inc.style.color = hasSal ? "#00b578" : "#f53f3f";
+    }
   }
 
   /* ---------- 资产动态列表 ---------- */
@@ -231,7 +203,7 @@
           <button type="button" class="asset-del" data-del="${a.id}">删除</button>
         </div>
         <label class="field">
-          <span class="f-label">这是什么？<span class="f-hint">例如：杭州的房子、工行存款、XX股票</span></span>
+          <span class="f-label">这是什么？<span class="f-hint">例如：北京的房子、工行存款、XX股票</span></span>
           <input type="text" data-af="name" maxlength="50" value="${escapeHtml(a.name || "")}" placeholder="例如：工行存款">
         </label>
         <div class="field">
@@ -257,7 +229,7 @@
           </select>
         </div>
         <label class="field">
-          <span class="f-label">备注<span class="f-hint">选填</span></span>
+          <span class="f-label">备注<span class="f-hint">选填，例如：出租中、月租8000</span></span>
           <input type="text" data-af="note" maxlength="100" value="${escapeHtml(a.note || "")}" placeholder="选填">
         </label>
       </div>`;
@@ -283,7 +255,7 @@
         a[el.dataset.af] = el.value;
       });
     });
-    updateSummary();
+    refreshFinalCheck();
     saveDraft();
   }
 
@@ -298,12 +270,12 @@
     });
     $("#progressFill").style.width = `${(n / TOTAL_STEPS) * 100}%`;
     $("#btnPrev").hidden = n === 1;
-    const nextBtn = $("#btnNext");
     if (n === TOTAL_STEPS) {
       $("#navBtns").hidden = true;
+      refreshFinalCheck();
     } else {
       $("#navBtns").hidden = false;
-      nextBtn.textContent = "下一步";
+      $("#btnNext").textContent = "下一步";
     }
     window.scrollTo({ top: 0 });
     saveDraft();
@@ -311,26 +283,24 @@
 
   /* ---------- 条件显示 ---------- */
   function refreshConditionals() {
-    const kids = Number($("#fKids") ? $("#fKids").value : 0) || 0;
-    $("#kidsAgesWrap").hidden = kids <= 0;
-
+    // 第 1 步
     const housing = getChip("housing");
     $("#rentWrap").hidden = housing !== "租房";
-    $("#loanWrap").hidden = housing !== "自有住房·有房贷";
+    const houseCount = Number($('[name="houseCount"]').value) || 0;
+    $("#houseWrap").hidden = houseCount <= 0;
 
+    // 第 2 步
     $("#commissionWrap").hidden = getChip("hasCommission") !== "有";
+
+    // 第 3 步
+    const hasDebt = getChip("hasDebt") === "有";
+    $("#debtWrap").hidden = !hasDebt;
+    const mortgage = Number($('[name="loanMortgage"]').value) || 0;
+    $("#firstLoanWrap").hidden = !hasDebt || mortgage <= 0;
   }
 
   /* ---------- 校验 ---------- */
   function validateStep(n) {
-    if (n === 1) {
-      const name = $("#fName").value.trim();
-      if (!name) {
-        alert("请先填写「怎么称呼您」");
-        $("#fName").focus();
-        return false;
-      }
-    }
     if (n === 2) {
       const salary = $("#fSalary").value;
       if (!salary || Number(salary) <= 0) {
@@ -345,8 +315,9 @@
   /* ---------- 提交 ---------- */
   async function doSubmit() {
     const payload = buildPayload();
-    if (!payload.client.name.trim()) {
-      showStep(1);
+    if (!(payload.client.salaryPreTax > 0)) {
+      showStep(2);
+      alert("请先填写「每月税前工资」");
       return;
     }
     const btn = $("#btnSubmit");
@@ -374,9 +345,7 @@
         } catch (e) { /* ignore */ }
         throw new Error(msg);
       }
-      // 成功：清草稿、展示成功页
       clearDraft();
-      renderSummary("#successSummary");
       $(".page").hidden = true;
       $("#successPage").hidden = false;
       window.scrollTo({ top: 0 });
@@ -390,14 +359,18 @@
 
   /* ---------- 事件绑定 ---------- */
   function bindEvents() {
-    // 胶囊选择
+    // 胶囊选择（单选组 + 多选组）
     $$(".chips").forEach((group) => {
       group.addEventListener("click", (e) => {
         const chip = e.target.closest(".chip");
         if (!chip) return;
-        const isOn = chip.classList.contains("on");
-        group.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
-        if (!isOn) chip.classList.add("on");
+        if (isMultiGroup(group)) {
+          chip.classList.toggle("on");
+        } else {
+          const isOn = chip.classList.contains("on");
+          group.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+          if (!isOn) chip.classList.add("on");
+        }
         refreshConditionals();
         saveDraft();
       });
@@ -407,13 +380,14 @@
     document.addEventListener("input", (e) => {
       if (e.target.matches("input, textarea")) {
         refreshConditionals();
+        refreshFinalCheck();
         saveDraft();
       }
     });
     document.addEventListener("change", (e) => {
       if (e.target.matches("input, textarea")) {
         refreshConditionals();
-        updateSummary();
+        refreshFinalCheck();
         saveDraft();
       }
     });
@@ -432,8 +406,8 @@
       assets = assets.filter((a) => a.id !== aid);
       assets.forEach((a, i) => (a.idx = i + 1));
       renderAssets();
+      refreshFinalCheck();
       saveDraft();
-      updateSummary();
     });
     $("#assetItems").addEventListener("input", syncAssetFromDom);
     $("#assetItems").addEventListener("change", syncAssetFromDom);
@@ -442,7 +416,6 @@
     $("#btnNext").addEventListener("click", () => {
       if (!validateStep(currentStep)) return;
       showStep(currentStep + 1);
-      if (currentStep === TOTAL_STEPS) updateSummary();
     });
     $("#btnPrev").addEventListener("click", () => {
       if (currentStep > 1) showStep(currentStep - 1);
@@ -454,12 +427,8 @@
       doSubmit();
     });
 
-    // 重新提交（回到表单并恢复草稿）
+    // 返回修改
     $("#btnAgain").addEventListener("click", () => {
-      const data = buildPayload();
-      try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ fields: {}, chips: {}, assets, step: TOTAL_STEPS }));
-      } catch (e) { /* ignore */ }
       $("#successPage").hidden = true;
       $(".page").hidden = false;
       showStep(5);
@@ -471,11 +440,8 @@
     const restored = loadDraft();
     bindEvents();
     refreshConditionals();
-    updateSummary();
-    if (restored && restored > 1) {
-      // 提示有草稿，但默认从第 1 步开始，让客户自己点下一步即可
-    }
-    showStep(1);
+    refreshFinalCheck();
+    showStep(restored && restored > 1 && restored <= TOTAL_STEPS ? restored : 1);
   }
 
   init();

@@ -24,7 +24,11 @@ body {
   color: var(--ink);
   line-height: 1.6;
   min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
+
+button { touch-action: manipulation; }
 
 /* 顶栏 */
 .topbar {
@@ -153,11 +157,9 @@ textarea { resize: vertical; min-height: 44px; }
 .btn-add:active { background: #d8e8fb; }
 
 /* 汇总卡片 */
-.sum-item { display: flex; justify-content: space-between; padding: 7px 0; font-size: 14px; border-bottom: 1px dashed var(--line); }
+.sum-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; border-bottom: 1px dashed var(--line); }
 .sum-item:last-child { border-bottom: none; }
 .sum-item b { font-weight: 600; }
-.sum-total { font-size: 16px; font-weight: 700; color: var(--brand); }
-.sum-group { font-size: 13px; font-weight: 700; color: var(--ink-2); padding: 10px 0 2px; }
 
 /* 隐私 */
 .privacy-card { background: #fdf8ec; }
@@ -212,11 +214,24 @@ textarea { resize: vertical; min-height: 44px; }
 }
 .success-page h1 { font-size: 22px; margin-bottom: 6px; }
 .success-sub { font-size: 14px; color: var(--ink-2); margin-bottom: 20px; }
-#successSummary { text-align: left; }
 #btnAgain { width: 100%; margin-top: 16px; }
+
+/* ===== 手机端专项优化 ===== */
+@media (max-width: 420px) {
+  .step-title { font-size: 20px; }
+  .card { padding: 16px 14px; }
+  .p-step { font-size: 11px; }
+  .chip { font-size: 13.5px; padding: 10px 12px; min-height: 42px; }
+  .grid2 { gap: 0 10px; }
+  .nav-btns { padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+  .btn-primary, .btn-ghost { padding: 13px 10px; font-size: 15.5px; }
+  input[type="text"], input[type="number"], textarea, select { padding: 10px 11px; }
+}
 
 @media (max-width: 360px) {
   html { font-size: 15px; }
   .grid2 { grid-template-columns: 1fr; }
   .grid2 .span2 { grid-column: span 1; }
+  .p-step { font-size: 10.5px; letter-spacing: -0.2px; }
+  .topbar-inner { padding: 10px 12px; }
 }
