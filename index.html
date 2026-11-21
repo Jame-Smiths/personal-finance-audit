@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>财务体检信息采集</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="logo-dot"></span>
+      <span class="app-name">财务体检信息采集</span>
+      <span class="draft-badge" id="draftBadge" hidden>已自动保存</span>
+    </div>
+  </header>
+
+  <main class="page">
+    <!-- 进度条 -->
+    <div class="progress" id="progress" aria-hidden="true">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-steps">
+        <span data-step="1" class="p-step active">1 基本信息</span>
+        <span data-step="2" class="p-step">2 收入</span>
+        <span data-step="3" class="p-step">3 支出与负债</span>
+        <span data-step="4" class="p-step">4 资产</span>
+        <span data-step="5" class="p-step">5 确认</span>
+      </div>
+    </div>
+
+    <form id="mainForm" novalidate>
+      <!-- ========== 第 1 步：基本信息 ========== -->
+      <section class="step" data-step="1">
+        <h1 class="step-title">先认识一下您</h1>
+        <p class="step-sub">这些信息用于了解您能享受哪些税前扣除，<strong>不会收集身份证号、银行卡号</strong>。</p>
+
+        <div class="card">
+          <label class="field">
+            <span class="f-label">怎么称呼您？<em class="req">*</em></span>
+            <input type="text" id="fName" name="name" maxlength="50" placeholder="填真名、昵称都可以" autocomplete="off">
+          </label>
+          <label class="field">
+            <span class="f-label">您的年龄</span>
+            <input type="number" id="fAge" name="age" min="0" max="120" inputmode="numeric" placeholder="例如 28">
+          </label>
+          <div class="field">
+            <span class="f-label">婚姻状况</span>
+            <div class="chips" data-name="marital">
+              <button type="button" class="chip" data-value="未婚">未婚</button>
+              <button type="button" class="chip" data-value="已婚">已婚</button>
+              <button type="button" class="chip" data-value="离异">离异</button>
+              <button type="button" class="chip" data-value="丧偶">丧偶</button>
+            </div>
+          </div>
+          <label class="field">
+            <span class="f-label">有几个孩子？<span class="f-hint">没有就填 0 或不填</span></span>
+            <input type="number" id="fKids" name="childrenCount" min="0" max="20" inputmode="numeric" placeholder="0">
+          </label>
+          <label class="field" id="kidsAgesWrap" hidden>
+            <span class="f-label">孩子的年龄<span class="f-hint">方便的话填一下，例如：8岁、5岁</span></span>
+            <input type="text" name="childrenAges" maxlength="50" placeholder="例如：8岁、5岁" autocomplete="off">
+          </label>
+          <div class="field">
+            <span class="f-label">家里有 3 岁以下的小宝宝吗？</span>
+            <div class="chips" data-name="hasInfant">
+              <button type="button" class="chip" data-value="有">有</button>
+              <button type="button" class="chip" data-value="无">无</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="f-label">需要赡养 60 岁以上的老人吗？<span class="f-hint">父母、岳父母、公婆都算</span></span>
+            <div class="chips" data-name="supportElders">
+              <button type="button" class="chip" data-value="无">不用</button>
+              <button type="button" class="chip" data-value="有·非独生">要（有兄弟姐妹）</button>
+              <button type="button" class="chip" data-value="有·独生">要（我是独生子女）</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="f-label">现在住的情况是？</span>
+            <div class="chips" data-name="housing">
+              <button type="button" class="chip" data-value="租房">租房</button>
+              <button type="button" class="chip" data-value="自有住房·有房贷">自己的房子，有房贷</button>
+              <button type="button" class="chip" data-value="自有住房·无房贷">自己的房子，无房贷</button>
+              <button type="button" class="chip" data-value="与父母同住">与父母同住</button>
+              <button type="button" class="chip" data-value="其他">其他</button>
+            </div>
+          </div>
+          <div id="rentWrap" hidden>
+            <label class="field">
+              <span class="f-label">在哪个城市租房？</span>
+              <input type="text" name="rentCity" maxlength="30" placeholder="例如：杭州" autocomplete="off">
+            </label>
+            <label class="field">
+              <span class="f-label">每月租金多少元？</span>
+              <input type="number" name="rentMonthly" min="0" inputmode="decimal" placeholder="例如 3000">
+            </label>
+          </div>
+          <div class="field" id="loanWrap" hidden>
+            <span class="f-label">这套房是您的首套住房贷款吗？</span>
+            <div class="chips" data-name="firstHomeLoan">
+              <button type="button" class="chip" data-value="是">是</button>
+              <button type="button" class="chip" data-value="否">否</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 第 2 步：收入 ========== -->
+      <section class="step" data-step="2" hidden>
+        <h1 class="step-title">您的收入情况</h1>
+        <p class="step-sub">收入信息只填一遍，后面帮您做节税测算和收支分析都会用到它。</p>
+
+        <div class="card">
+          <label class="field">
+            <span class="f-label">每月税前工资是多少？<em class="req">*</em><span class="f-hint">工资条上的应发数，不是到手的数</span></span>
+            <input type="number" id="fSalary" name="salaryPreTax" min="0" inputmode="decimal" placeholder="例如 20000" required>
+          </label>
+          <label class="field">
+            <span class="f-label">每月实际到手多少？<span class="f-hint">银行卡里收到的数</span></span>
+            <input type="number" name="netMonthly" min="0" inputmode="decimal" placeholder="例如 15000">
+          </label>
+          <label class="field">
+            <span class="f-label">社保缴纳基数</span>
+            <input type="number" name="socialBase" min="0" inputmode="decimal" placeholder="工资条上可查">
+          </label>
+          <label class="field">
+            <span class="f-label">公积金缴纳基数</span>
+            <input type="number" name="fundBase" min="0" inputmode="decimal" placeholder="工资条上可查">
+          </label>
+          <label class="field">
+            <span class="f-label">每年年终奖大概多少？</span>
+            <input type="number" name="yearEndBonus" min="0" inputmode="decimal" placeholder="例如 50000，没有就不填">
+          </label>
+
+          <div class="divider">提成收入</div>
+          <div class="field">
+            <span class="f-label">有提成收入吗？</span>
+            <div class="chips" data-name="hasCommission">
+              <button type="button" class="chip" data-value="有">有</button>
+              <button type="button" class="chip" data-value="无">无</button>
+            </div>
+          </div>
+          <div id="commissionWrap" hidden>
+            <label class="field">
+              <span class="f-label">提成是怎么算的？<span class="f-hint">按业绩的百分之几？有没有阶梯？用大白话描述就行</span></span>
+              <textarea name="commissionRule" rows="3" maxlength="300" placeholder="例如：每月业绩的 3%，超过 10 万的部分按 5%"></textarea>
+            </label>
+            <div class="field">
+              <span class="f-label">提成由谁发？</span>
+              <div class="chips" data-name="commissionPayer">
+                <button type="button" class="chip" data-value="公司工资发放">公司随工资发</button>
+                <button type="button" class="chip" data-value="灵活用工平台">灵活用工平台发</button>
+                <button type="button" class="chip" data-value="个人代开发票">个人代开发票</button>
+                <button type="button" class="chip" data-value="其他">其他方式</button>
+              </div>
+            </div>
+            <div class="field">
+              <span class="f-label">提成多久结一次？</span>
+              <div class="chips" data-name="commissionCycle">
+                <button type="button" class="chip" data-value="月度">每月</button>
+                <button type="button" class="chip" data-value="季度">每季度</button>
+                <button type="button" class="chip" data-value="半年">每半年</button>
+                <button type="button" class="chip" data-value="年度">每年</button>
+                <button type="button" class="chip" data-value="不定期">不定期</button>
+              </div>
+            </div>
+            <label class="field">
+              <span class="f-label">平均每个月提成大概多少？</span>
+              <input type="number" name="commissionMonthly" min="0" inputmode="decimal" placeholder="例如 8000">
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="f-label">还有其他收入吗？<span class="f-hint">兼职、稿费、理财利息、房租收入等，简单说说就行</span></span>
+            <textarea name="otherIncome" rows="2" maxlength="300" placeholder="例如：基金理财每年约 2 万利息"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <!-- ========== 第 3 步：支出与负债 ========== -->
+      <section class="step" data-step="3" hidden>
+        <h1 class="step-title">每月花销 & 现在欠的钱</h1>
+        <p class="step-sub">按<strong>平均每个月</strong>估个数就行，不用精确到分。</p>
+
+        <div class="card">
+          <div class="card-title">每月支出（元/月）</div>
+          <div class="grid2">
+            <label class="field"><span class="f-label">房租或月供</span><input type="number" name="expHousing" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">吃饭</span><input type="number" name="expFood" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">交通</span><input type="number" name="expTransport" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">孩子教育</span><input type="number" name="expEducation" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">给父母的钱</span><input type="number" name="expSupport" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">保险保费</span><input type="number" name="expInsurance" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field span2"><span class="f-label">其他开销<span class="f-hint">购物、娱乐、人情往来等</span></span><input type="number" name="expOther" min="0" inputmode="decimal" placeholder="0"></label>
+          </div>
+
+          <div class="divider">现在欠的钱（余额）</div>
+          <div class="grid2">
+            <label class="field"><span class="f-label">房贷还剩多少</span><input type="number" name="loanMortgage" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">车贷还剩多少</span><input type="number" name="loanCar" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">消费贷 / 网贷</span><input type="number" name="loanConsumer" min="0" inputmode="decimal" placeholder="0"></label>
+            <label class="field"><span class="f-label">信用卡欠款</span><input type="number" name="loanCreditCard" min="0" inputmode="decimal" placeholder="0"></label>
+          </div>
+          <label class="field">
+            <span class="f-label">还有别的欠款吗？<span class="f-hint">比如跟亲戚朋友借的钱</span></span>
+            <textarea name="otherDebt" rows="2" maxlength="300" placeholder="例如：欠朋友 5 万，约定明年还"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <!-- ========== 第 4 步：资产 ========== -->
+      <section class="step" data-step="4" hidden>
+        <h1 class="step-title">您名下的资产</h1>
+        <p class="step-sub">房子、车子、存款、股票基金……<strong>只算您自己名下的</strong>，一项一项加就行。估值填个大概数即可。</p>
+
+        <div class="card" id="assetList">
+          <div class="card-title">资产清单（<span id="assetCount">0</span> 项）</div>
+          <div id="assetItems"></div>
+          <button type="button" class="btn-add" id="btnAddAsset">＋ 添加一项资产</button>
+        </div>
+
+        <div class="card">
+          <label class="field">
+            <span class="f-label">还有什么想补充说明的吗？<span class="f-hint">选填，例如特殊家庭情况、近期大额收支</span></span>
+            <textarea name="note" rows="3" maxlength="500" placeholder="想说啥都可以写在这里"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <!-- ========== 第 5 步：确认提交 ========== -->
+      <section class="step" data-step="5" hidden>
+        <h1 class="step-title">检查一下，然后提交</h1>
+        <p class="step-sub">下面是根据您填写的内容自动算出来的三张表初稿。</p>
+
+        <div class="card" id="summaryCards"></div>
+
+        <div class="card privacy-card">
+          <div class="card-title">隐私说明</div>
+          <ul class="privacy-list">
+            <li>您填写的内容<strong>只提交到咨询顾问的飞书多维表格</strong>，不经过其他任何平台存储。</li>
+            <li>全程<strong>不收集身份证号、银行卡号</strong>等敏感信息。</li>
+            <li>提交后顾问会与您进一步核对数据，之后即可开始分析。</li>
+          </ul>
+        </div>
+
+        <p class="submit-error" id="submitError" hidden></p>
+        <button type="submit" class="btn-submit" id="btnSubmit">提交给顾问</button>
+        <p class="submit-note" id="submitNote">提交前请确认以上信息填写完整</p>
+      </section>
+    </form>
+
+    <nav class="nav-btns" id="navBtns">
+      <button type="button" class="btn-ghost" id="btnPrev" hidden>上一步</button>
+      <button type="button" class="btn-primary" id="btnNext">下一步</button>
+    </nav>
+
+    <p class="foot-note">内容仅用于个人财务体检咨询 · 数据不会公开</p>
+  </main>
+
+  <!-- 成功页 -->
+  <div class="success-page" id="successPage" hidden>
+    <div class="success-icon">✓</div>
+    <h1>提交成功！</h1>
+    <p class="success-sub">顾问已经收到您的信息，会尽快与您核对。</p>
+    <div class="card" id="successSummary"></div>
+    <button type="button" class="btn-ghost" id="btnAgain">修改后重新提交</button>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
